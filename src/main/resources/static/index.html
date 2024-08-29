@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memo Service</title>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500&display=swap" rel="stylesheet">
+
+  <style>
+    @import url(//spoqa.github.io/spoqa-han-sans/css/SpoqaHanSans-kr.css);
+
+    body {
+      margin: 0;
+    }
+
+    .area-edit {
+      display: none;
+    }
+
+    .wrap {
+      width: 538px;
+      margin: 10px auto;
+    }
+
+    #contents {
+      width: 538px;
+    }
+
+    .area-write {
+      position: relative;
+      width: 538px;
+    }
+
+    .area-write img {
+      cursor: pointer;
+      position: absolute;
+      width: 22.2px;
+      height: 22px;
+      bottom: 15px;
+      right: 17px;
+    }
+
+    .background-header {
+      position: fixed;
+      z-index: -1;
+      top: 0;
+      width: 100%;
+      height: 428px;
+      background-color: #339af0;
+    }
+
+    .background-body {
+      position: fixed;
+      z-index: -1;
+      top: 428px;
+      height: 100%;
+      width: 100%;
+      background-color: #dee2e6;
+    }
+
+    .header {
+      margin-top: 50px;
+    }
+
+    .header h2 {
+      height: 33px;
+      font-size: 42px;
+      font-weight: 500;
+      line-height: 0.79;
+      letter-spacing: -0.5px;
+      text-align: center;
+      color: #ffffff;
+    }
+
+    .header p {
+      margin: 40px auto;
+      width: 217px;
+      height: 48px;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.5;
+      letter-spacing: -1.12px;
+      text-align: center;
+      color: #ffffff;
+    }
+
+    textarea.field {
+      width: 502px !important;
+      height: 146px;
+      border-radius: 5px;
+      background-color: #ffffff;
+      border: none;
+      padding: 18px;
+      resize: none;
+    }
+
+    textarea.field::placeholder {
+      width: 216px;
+      height: 16px;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 16px;
+      font-weight: normal;
+      line-height: 1;
+      letter-spacing: -0.96px;
+      text-align: left;
+      color: #868e96;
+    }
+
+    .card {
+      width: 538px;
+      border-radius: 5px;
+      background-color: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .card .metadata {
+      position: relative;
+      display: flex;
+      font-family: 'Spoqa Han Sans';
+      font-size: 11px;
+      line-height: 1;
+      letter-spacing: -0.77px;
+      text-align: left;
+      color: #adb5bd;
+      height: 14px;
+      padding: 10px 23px;
+    }
+
+    .card .metadata .date {}
+
+    .card .metadata .username {
+      margin-left: 20px;
+    }
+
+    .contents {
+      padding: 0 23px;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+
+    .contents div.edit {
+      display: none;
+    }
+
+    .contents textarea.te-edit {
+      border-right: none;
+      border-top: none;
+      border-left: none;
+      resize: none;
+      border-bottom: 1px solid #212529;
+      width: 100%;
+      font-family: 'Spoqa Han Sans';
+    }
+
+    .footer {
+      position: relative;
+      height: 40px;
+    }
+
+    .footer img.icon-start-edit {
+      cursor: pointer;
+      position: absolute;
+      bottom: 14px;
+      right: 55px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .footer img.icon-end-edit {
+      cursor: pointer;
+      position: absolute;
+      display: none;
+      bottom: 14px;
+      right: 55px;
+      width: 20px;
+      height: 15px;
+    }
+
+    .footer img.icon-delete {
+      cursor: pointer;
+      position: absolute;
+      bottom: 12px;
+      right: 19px;
+      width: 14px;
+      height: 18px;
+    }
+
+    #cards-box {
+      margin-top: 12px;
+    }
+  </style>
+  <script>
+    function isValidContents(contents) {
+      if (contents === '') {
+        alert('내용을 입력해주세요');
+        return false;
+      }
+      if (contents.trim().length > 140) {
+        alert('공백 포함 140자 이하로 입력해주세요');
+        return false;
+      }
+      return true;
+    }
+
+    function genRandomName(length) {
+      let result = '';
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      return result;
+    }
+
+    function editPost(id) {
+      showEdits(id);
+      const contents = $(`#${id}-contents`).text().trim();
+      $(`#${id}-textarea`).val(contents);
+    }
+
+    function showEdits(id) {
+      $(`#${id}-editarea`).show();
+      $(`#${id}-submit`).show();
+      $(`#${id}-delete`).show();
+      $(`#${id}-contents`).hide();
+      $(`#${id}-edit`).hide();
+    }
+
+    $(document).ready(function () {
+      getMessages();
+    })
+
+    function getMessages() {
+      $('#cards-box').empty();
+      $.ajax({
+        type: 'GET',
+        url: '/api/memos',
+        success: function (response) {
+          response.forEach(message => {
+            addHTML(message.id, message.username, message.title, message.contents, message.createdAt, message.planDate);
+
+          });
+        },
+        error: function (xhr, status, error) {
+          console.error('Error:', status, error);
+          alert('메시지 로드 중 오류가 발생했습니다.');
+        }
+      });
+    }
+
+    function addHTML(id, username, title, contents, createdAt) {
+      const tempHtml = `<div class="card">
+                <div class="metadata">
+                    <div class="date">${createdAt}</div>
+                    <div id="${id}-username" class="username">${username}</div>
+                </div>
+                <div class="contents">
+                    <div id="${id}-contents" class="text">${contents}</div>
+                    <div id="${id}-editarea" class="edit">
+                        <textarea id="${id}-textarea" class="te-edit" cols="30" rows="5"></textarea>
+                    </div>
+                </div>
+                <div class="footer">
+                    <img id="${id}-edit" class="icon-start-edit" src="images/edit.png" alt="" onclick="editPost('${id}')">
+                    <img id="${id}-delete" class="icon-delete" src="images/delete.png" alt="" onclick="deleteOne('${id}')">
+                    <img id="${id}-submit" class="icon-end-edit" src="images/done.png" alt="" onclick="submitEdit('${id}')">
+                </div>
+            </div>`;
+      $('#cards-box').append(tempHtml);
+    }
+
+    function writePost() {
+      const title = $('#title').val().trim();
+      const contents = $('#contents').val().trim();
+      const date = $('#date').val();
+
+      if (title === '' || !isValidContents(contents)) {
+        return;
+      }
+
+      const username = genRandomName(10);
+      const planDate = new Date(date).toISOString(); // Ensure correct format
+
+      const data = {
+        username: username,
+        title: title,
+        contents: contents,
+        createdAt: new Date().toISOString(), // Set current time
+        planDate: planDate
+      };
+
+      $.ajax({
+        type: "POST",
+        url: "/api/memos",
+        contentType: "application/json",
+        data: JSON.stringify(data),
+        success: function () {
+          alert('메시지가 성공적으로 작성되었습니다.');
+          window.location.reload();
+        },
+        error: function (xhr, status, error) {
+          alert('메시지 작성 중 오류가 발생했습니다.');
+          console.error('Error:', status, error);
+        }
+      });
+    }
+
+
+    function submitEdit(id) {
+      const username = $(`#${id}-username`).text().trim();
+      const contents = $(`#${id}-textarea`).val().trim();
+
+      if (!isValidContents(contents)) {
+        return;
+      }
+
+      const data = {
+        username: username,
+        contents: contents
+      };
+
+      $.ajax({
+        type: "PUT",
+        url: `/api/memos/${id}`,
+        contentType: "application/json",
+        data: JSON.stringify(data),
+        success: function () {
+          alert('메시지 변경에 성공하였습니다.');
+          window.location.reload();
+        },
+        error: function (xhr, status, error) {
+          alert('메시지 변경 중 오류가 발생했습니다.');
+          console.error('Error:', status, error);
+        }
+      });
+    }
+
+
+    function deleteOne(id) {
+      $.ajax({
+        type: "DELETE",
+        url: `/api/memos/${id}`,
+        success: function () {
+          alert('메시지 삭제에 성공하였습니다.');
+          window.location.reload();
+        },
+        error: function (xhr, status, error) {
+          alert('메시지 삭제 중 오류가 발생했습니다.');
+          console.error('Error:', status, error);
+        }
+      })
+    }
+  </script>
+</head>
+<body>
+<div class="background-header"></div>
+<div class="background-body"></div>
+<div class="wrap">
+  <div class="header">
+    <h2>Memo</h2>
+    <p>공유하고 싶은 소식을 입력해주세요.</p>
+  </div>
+  <div class="area-write">
+    <input type="text" id="title" style="width: 502px; height: 15px; border-radius: 5px; background-color: #ffffff; border: none; padding: 18px;
+      resize: none; margin-bottom: 5px" placeholder="제목을 입력하세요">
+    <input type="date" style="width: 502px; height: 15px; border-radius: 5px; background-color: #ffffff; border: none; padding: 18px;
+      resize: none; margin-bottom: 5px" id="date">
+    <textarea class="field" placeholder="내용을 입력하세요" id="contents" cols="30" rows="10"></textarea>
+    <img src="images/send.png" alt="" onclick="writePost()">
+  </div>
+  <div id="cards-box" class="area-read"></div>
+</div>
+</body>
+</html>
