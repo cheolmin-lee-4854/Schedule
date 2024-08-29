@@ -160,24 +160,27 @@
       height: 40px;
     }
 
+
+
+
     .footer img.icon-start-edit {
       cursor: pointer;
       position: absolute;
       bottom: 14px;
       right: 55px;
       width: 18px;
-      height: 18px;
-    }
-
-    .footer img.icon-end-edit {
-      cursor: pointer;
-      position: absolute;
-      display: none;
-      bottom: 14px;
-      right: 55px;
-      width: 20px;
       height: 15px;
     }
+
+    .footer img.icon-view {
+      cursor: pointer;
+      position: absolute;
+      bottom: 14px;
+      right: 95px;
+      width: 18px;
+      height: 15px;
+    }
+
 
     .footer img.icon-delete {
       cursor: pointer;
@@ -242,6 +245,32 @@
       margin: 4px 2px;
       cursor: pointer;
     }
+
+    /* 모달 스타일 (보기) */
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 5px;
+    }
+
+    .close-view {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .close-view:hover,
+    .close-view:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
   </style>
 </head>
 <body>
@@ -279,7 +308,31 @@
   </div>
 </div>
 
+<!-- 모달 창 (보기) -->
+<div id="viewModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>메모 상세 보기</h2>
+    <div id="view-title"></div>
+    <hr>
+    <div id="view-date"></div>
+    <hr>
+    내용 : <div id="view-contents"></div>
+    <hr>
+    <h4>댓글</h4>
+    <div id="comments-section">
+      <!-- Comments will be loaded here -->
+    </div>
+    <textarea id="comment-input" placeholder="댓글을 입력하세요" style="width: 100%; margin-top: 10px; border-radius: 5px;"></textarea>
+    <button id="add-comment" style="margin-top: 10px;">댓글 추가</button>
+  </div>
+</div>
+
+
+
 <script>
+
+
   function isValidContents(contents) {
     if (contents === '') {
       alert('내용을 입력해주세요');
@@ -300,6 +353,78 @@
     }
     return result;
   }
+
+  function checkOne(id) {
+    // Get existing data
+    const title = $(`#${id}-title`).text().trim();
+    const contents = $(`#${id}-contents`).text().trim();
+    const planDate = $(`#${id}-planDate`).text().trim();
+
+    // Set data in the view modal
+    $('#view-title').text(`제목: ${title}`);
+    $('#view-date').text(`날짜: ${planDate}`);
+    $('#view-contents').text(`${contents}`);
+
+    // Load comments
+    loadComments(id);
+
+    // Show the view modal
+    $('#viewModal').show();
+
+    $('.close').click(function () {
+      $(this).closest('.modal').hide();
+    });
+  }
+
+  function loadComments(id) {
+    $('#comments-section').empty();
+    $.ajax({
+      type: 'GET',
+      url: `/api/memos/${id}/comments`,
+      success: function (response) {
+        response.forEach(comment => {
+          $('#comments-section').append(`<div>${comment.username}: ${comment.text}</div>`);
+        });
+      },
+      error: function (xhr, status, error) {
+        console.error('Error:', status, error);
+      }
+    });
+  }
+
+  $('#add-comment').click(function () {
+    const commentText = $('#comment-input').val().trim();
+    const memoId = $('#view-title').text().split('제목: ')[1]; // Extract memo ID
+
+    if (commentText === '') {
+      alert('댓글을 입력해주세요');
+      return;
+    }
+
+    const data = {
+      username: genRandomName(10),
+      text: commentText
+    };
+
+    $.ajax({
+      type: "POST",
+      url: `/api/memos/${memoId}/comments`,
+      contentType: "application/json",
+      data: JSON.stringify(data),
+      success: function () {
+        alert('댓글이 성공적으로 추가되었습니다.');
+        loadComments(memoId); // Refresh comments
+        $('#comment-input').val(''); // Clear input field
+      },
+      error: function (xhr, status, error) {
+        alert('댓글 추가 중 오류가 발생했습니다.');
+        console.error('Error:', status, error);
+      }
+    });
+  });
+
+
+
 
   function openEditModal(id) {
     currentId = id; // 현재 수정 중인 ID 저장
@@ -322,6 +447,7 @@
   $('.close').click(function () {
     $('#editModal').hide();
   });
+
 
   // 수정 완료 버튼 클릭 시
   $('#modal-submit').click(function () {
@@ -385,10 +511,13 @@
               </div>
               <div class="contents">
                   <div id="${id}-title">${title}</div> <!-- 제목 표시 -->
+                  <br>
                   <div id="${id}-planDate">${planDate}</div> <!-- 날짜 표시 -->
+                  <br>
                   <div id="${id}-contents" class="text">${contents}</div>
               </div>
               <div class="footer">
+                  <img id="${id}-view" class="icon-view" src="images/view.png" alt="" onclick="checkOne('${id}')">
                   <img id="${id}-edit" class="icon-start-edit" src="images/edit.png" alt="" onclick="openEditModal('${id}')">
                   <img id="${id}-delete" class="icon-delete" src="images/delete.png" alt="" onclick="deleteOne('${id}')">
               </div>

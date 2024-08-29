@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -22,8 +24,8 @@ public class Memo {
     @Column(name = "contents")
     private String contents;
 
-    @Column(name = "title") // Fixing the column name here
-    private String title; // Title field
+    @Column(name = "title")
+    private String title;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -31,8 +33,12 @@ public class Memo {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "plan_date") // Column name for planDate
+    @Column(name = "plan_date")
     private LocalDateTime planDate;
+
+    // 달라진 부분: OneToMany 관계를 설정하여 Memo가 여러 Comment를 가질 수 있게 함
+    @OneToMany(mappedBy = "memo", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments = new ArrayList<>(); // 댓글 리스트
 
     public Memo(MemoRequestDto requestDto) {
         this.username = requestDto.getUsername();
